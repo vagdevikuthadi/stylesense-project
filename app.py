@@ -1,88 +1,106 @@
 import streamlit as st
 import google.generativeai as genai
-import time
 
-# --- 1. CORE SETUP ---
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-model = genai.GenerativeModel('gemini-2.0-flash-lite')
+# --- 1. CONFIG ---
+st.set_page_config(page_title="StyleSense Pro v3", page_icon="💃", layout="wide")
 
-st.set_page_config(page_title="StyleSense Elite", page_icon="👠", layout="wide")
+# --- 2. SIDEBAR FOUNDATION (Move this up!) ---
+with st.sidebar:
+    st.title("🏗️ Foundation")
+    # We define the season here first so the rest of the app can see it
+    season = st.radio("Current Season", ["Spring", "Summer", "Fall", "Winter"], key="season_select")
+    silhouette = st.selectbox("Body Silhouette", ["Tailored/Slim", "Oversized/Relaxed", "Athletic", "Classic Fit"])
+    materials = st.multiselect("Preferred Materials", ["Leather", "Wool", "Silk", "Linen", "Denim", "Cotton"])
+    st.divider()
+    st.caption("v3.0 - Professional Personal Stylist")
 
-# --- 2. CUSTOM CSS (To make it look like a real app) ---
-st.markdown("""
+# --- 3. DYNAMIC THEME LOGIC ---
+# Now we use the variable 'season' we just created
+colors = {"Spring": "#7C9473", "Summer": "#E9C46A", "Fall": "#A85832", "Winter": "#264653"}
+season_color = colors.get(season, "#000000")
+
+st.markdown(f"""
     <style>
-    .main { background-color: #f8f9fa; }
-    .stButton>button { width: 100%; border-radius: 20px; height: 3em; background-color: #FF4B4B; color: white; }
-    .style-card { background-color: white; padding: 20px; border-radius: 15px; border-left: 5px solid #FF4B4B; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); }
+    .stApp {{ background-color: #ffffff; }}
+    .main-title {{ font-family: 'serif'; color: {season_color}; font-size: 3.5rem; font-weight: 700; }}
+    .result-card {{ 
+        background-color: #f8f9fa; padding: 30px; border-radius: 15px; 
+        border-left: 10px solid {season_color}; margin-top: 20px;
+        color: #333333;
+    }}
+    div.stButton > button:first-child {{
+        background-color: {season_color}; color: white; border: none; width: 100%; height: 50px; font-weight: bold;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. SIDEBAR CONTROLS ---
-with st.sidebar:
-    st.image("https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&q=80")
-    st.title("Stylist Settings")
-    use_mock = st.toggle("🚀 Mock Mode (Instant)", value=True)
-    st.divider()
+# --- 4. AI SETUP ---
+try:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except:
+    st.error("API Key error! Please check your Secrets in Streamlit Cloud.")
+
+# --- 5. MAIN STAGE ---
+st.markdown(f'<h1 class="main-title">StyleSense {season}</h1>', unsafe_allow_html=True)
+st.write("### Personal Wardrobe Consultation")
+
+col1, col2 = st.columns([1, 1], gap="large")
+
+with col1:
+    st.subheader("1. The Creative Core")
+    hero_piece = st.text_input("What is your 'Hero Piece'?", placeholder="e.g., A vintage oversized blazer")
     
-    st.subheader("Your Profile")
-    gender = st.radio("Style Category:", ["Masculine", "Feminine", "Unisex"])
-    weather = st.selectbox("Current Weather:", ["Sunny & Warm", "Cold & Rainy", "Drafty/Autumn", "Snowy"])
-    st.write("---")
-    st.info("Current Model: Gemini 2.0 Flash-Lite")
-
-# --- 4. MAIN INTERFACE ---
-st.markdown("<h1 style='text-align: center;'>👠 StyleSense Elite</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center; color: grey;'>AI-Powered Wardrobe Intelligence</h4>", unsafe_allow_html=True)
-
-# Layout Columns
-col_in, col_out = st.columns([1, 1], gap="large")
-
-with col_in:
-    st.subheader("📋 Outfit Details")
-    user_item = st.text_input("Main Item:", placeholder="e.g., Beige Trench Coat")
-    vibe = st.select_slider("Select Vibe Intensity:", 
-                           options=["Super Casual", "Smart Casual", "Formal", "High Fashion"])
+    c1, c2 = st.columns(2)
+    with c1:
+        occasion = st.selectbox("The Occasion", ["Office/Corporate", "First Date", "Night Out", "Airport/Travel", "Coffee/Casual"])
+    with c2:
+        time_of_day = st.toggle("After Dark / Evening", value=False)
+        
+    st.subheader("2. The Aesthetic Goal")
+    energy = st.select_slider("Energy Level", options=["Lazy/Comfort", "Balanced", "Powerful/Sharp"])
     
-    base_color = st.color_picker("Main Item Color", "#D2B48C")
-    accessories = st.multiselect("Include Accessories:", ["Watch", "Scarf", "Sunglasses", "Hat", "Bag"])
-    
-    generate_btn = st.button("✨ CURATE MY LOOK")
+    c3, c4 = st.columns(2)
+    with c3:
+        aesthetic = st.selectbox("Aesthetic Filter", ["Old Money", "Streetwear", "Minimalist", "Grunge", "Preppy"])
+    with c4:
+        accent_color = st.color_picker("Accent Color Mood", "#D4AF37")
 
-# --- 5. LOGIC & MOCK OUTPUTS ---
-mock_responses = {
-    "Super Casual": "Pair with relaxed joggers and chunky sneakers. Comfort is king here.",
-    "Smart Casual": "Try slim-fit chinos and leather loafers. Perfect for a lunch meeting.",
-    "Formal": "Match with tailored trousers and polished dress shoes. Keep the lines clean.",
-    "High Fashion": "Go for contrast! Wide-leg pants and a statement belt. Think runway vibes."
-}
-
-with col_out:
-    st.subheader("🎨 Your Curation")
-    if generate_btn:
-        if user_item:
-            with st.spinner('Analyzing trends...'):
-                if use_mock:
-                    time.sleep(1)
-                    st.balloons()
-                    # Creating a "Card" look
-                    st.markdown(f"""
-                    <div class="style-card">
-                        <h3>Recommended Style: {vibe}</h3>
-                        <p><b>Top:</b> {user_item}</p>
-                        <p><b>Bottoms:</b> Dark wash denim or tailored slacks</p>
-                        <p><b>Shoes:</b> Minimalist leather sneakers</p>
-                        <hr>
-                        <p><i>Stylist Note: Since the weather is <b>{weather}</b>, layer with a thermal base!</i></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    try:
-                        prompt = f"Stylist for {gender}. Suggest a full outfit for {user_item} ({base_color}) in {weather} weather. Vibe: {vibe}. Accessories: {accessories}."
-                        response = model.generate_content(prompt)
-                        st.markdown(f'<div class="style-card">{response.text}</div>', unsafe_allow_html=True)
-                    except Exception as e:
-                        st.error(f"Quota Exceeded. Switch to Mock Mode! Error: {e}")
+    if st.button("CURATE MY DOSSIER"):
+        if not hero_piece:
+            st.warning("Please enter a Hero Piece to begin.")
         else:
-            st.warning("Please enter an item to start the curation.")
+            with st.spinner("Styling your look..."):
+                prompt = f"""
+                Act as a professional high-fashion stylist. Build an elite outfit based on these:
+                HERO: {hero_piece}. SEASON: {season}. SILHOUETTE: {silhouette}. MATERIALS: {materials}.
+                OCCASION: {occasion}. TIME: {"Night" if time_of_day else "Day"}. ENERGY: {energy}.
+                AESTHETIC: {aesthetic}. ACCENT COLOR: {accent_color}.
+                
+                Provide:
+                1. THE LOOK: (A catchy name)
+                2. THE CAPSULE: (List Top, Bottom, Shoes, Outerwear)
+                3. STYLE STRATEGY: (Why this works for {season})
+                4. ACCESSORIZER: (Jewelry/Bags)
+                5. THE BIG NO-NO: (What to avoid)
+                """
+                try:
+                    res = model.generate_content(prompt)
+                    st.session_state['pro_output'] = res.text
+                except:
+                    st.session_state['pro_output'] = "API Quota full! Try again in a minute."
+
+# --- 6. OUTPUT STAGE ---
+with col2:
+    if 'pro_output' in st.session_state:
+        st.subheader("Your Styled Dossier")
+        st.markdown(f'<div class="result-card">{st.session_state["pro_output"]}</div>', unsafe_allow_html=True)
+        
+        st.write("### Recommended Palette")
+        cp1, cp2, cp3 = st.columns(3)
+        cp1.color_picker("Base", "#FFFFFF", disabled=True, key="p1")
+        cp2.color_picker("Secondary", "#000000", disabled=True, key="p2")
+        cp3.color_picker("Accent", accent_color, disabled=True, key="p3")
     else:
-        st.info("Waiting for your input... Fill out the details on the left!")
+        st.info("← Adjust your settings and click 'Curate' to see your styling dossier.")
+        st.image("https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80")
